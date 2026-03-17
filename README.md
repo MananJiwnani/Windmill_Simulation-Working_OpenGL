@@ -4,7 +4,7 @@ This project simulates a windmill whose rotation responds dynamically to wind sp
 
 ---
 
-## 🎮 Controls
+## Controls
 
 | Input | Action |
 |------|--------|
@@ -20,24 +20,20 @@ This project simulates a windmill whose rotation responds dynamically to wind sp
 
 ---
 
-## ⚙️ Rotation Model (Short Explanation)
+## Rotation Model
 
 The windmill rotation is governed by a simple balance between wind force and resistance:
 
-acc = progstep*cos(wind_y)*wind_acc_factor - wing_speed*turbine_factor
+acc = (progstep * cos(wind_y) * wind_acc_factor) - (wing_speed * turbine_factor)
 
 ### Key Idea
 
-- The **first term** represents wind pushing the blades  
+- The **first term** represents acceleration due to wind 
 - The **second term** represents resistance (drag) opposing motion  
-
-So:
-### Steady Speed
 
 As the blades spin faster:
 - Resistance increases  
-- Eventually, resistance balances wind force  
+- Eventually, resistance balances wind force
 
-At this point:
-The windmill reaches a **constant rotation speed**, similar to terminal velocity in physics.
+The windmill reaches a **constant rotation speed**, similar to terminal velocity.
 
