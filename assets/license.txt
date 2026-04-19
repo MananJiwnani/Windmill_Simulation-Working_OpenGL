@@ -1,0 +1,11 @@
+Model Information:
+* title:	Farm - Free Low Poly Game Objects
+* source:	https://sketchfab.com/3d-models/farm-free-low-poly-game-objects-f61d98fe3a1c4cdf99b12f96315d76d8
+* author:	Kemal Çolak (https://sketchfab.com/kemalcolak)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Farm - Free Low Poly Game Objects" (https://sketchfab.com/3d-models/farm-free-low-poly-game-objects-f61d98fe3a1c4cdf99b12f96315d76d8) by Kemal Çolak (https://sketchfab.com/kemalcolak) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
