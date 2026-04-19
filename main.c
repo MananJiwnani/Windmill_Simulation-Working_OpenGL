@@ -264,9 +264,9 @@ void render_hud(int fbW, int fbH)
 
     char hud[256];
     float panel_x = 15.0f;
-    float panel_y = (float)fbH - 280.0f;
+    float panel_y = (float)fbH - 300.0f;
     float panel_w = 480.0f;
-    float panel_h = 265.0f;
+    float panel_h = 280.0f;
 
     // Modern dark background with gradient effect
     glEnable(GL_BLEND);
@@ -281,7 +281,8 @@ void render_hud(int fbW, int fbH)
     glVertex2f(panel_x, panel_y + panel_h);
     glEnd();
 
-    // Accent border all sides (3px)
+
+    //border outline - bright cyan with some transparency
     glColor4f(0.0f, 0.7f, 1.0f, 0.6f);
     glBegin(GL_LINE_LOOP);
     glVertex2f(panel_x + 1.5f, panel_y + 1.5f);
@@ -290,11 +291,13 @@ void render_hud(int fbW, int fbH)
     glVertex2f(panel_x + 1.5f, panel_y + panel_h - 1.5f);
     glEnd();
 
+    glEnd();
+
     glDisable(GL_BLEND);
 
     float x = panel_x + 20.0f;
-    float y = panel_y + panel_h - 22.0f;
-    float line_spacing = 24.0f;
+    float y = panel_y + panel_h - 30.0f;
+    float line_spacing = 26.0f;
 
     // Title - Modern styling
     glColor3f(0.0f, 0.8f, 1.0f);
@@ -303,7 +306,7 @@ void render_hud(int fbW, int fbH)
     for (const char *c = title; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
-    y -= line_spacing + 4.0f;
+    y -= line_spacing- 10.0f;
 
     // Section divider
     glEnable(GL_BLEND);
@@ -311,24 +314,24 @@ void render_hud(int fbW, int fbH)
     glColor4f(0.0f, 0.7f, 1.0f, 0.3f);
     glBegin(GL_LINES);
     glVertex2f(x, y);
-    glVertex2f(x + 440.0f, y);
+    glVertex2f(x + 400.0f, y);
     glEnd();
     glDisable(GL_BLEND);
 
-    y -= 8.0f;
+    y -= 22.0f;
 
-    // Wind speed
+    // Wind speed with progress bar
     glColor3f(1.0f, 1.0f, 1.0f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Speed:");
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
     glColor3f(0.2f, 1.0f, 0.8f);
-    glRasterPos2f(x + 90.0f, y);
+    glRasterPos2f(x + 120.0f, y);
     snprintf(hud, sizeof(hud), "%.2f km/hr", 1000.0 * fabs(progstep));
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
 
     y -= line_spacing;
 
@@ -337,40 +340,40 @@ void render_hud(int fbW, int fbH)
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Direction:");
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
     glColor3f(0.2f, 1.0f, 0.8f);
-    glRasterPos2f(x + 110.0f, y);
+    glRasterPos2f(x + 150.0f, y);
     snprintf(hud, sizeof(hud), "%.0f°", wind_y);
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    y -= line_spacing ;
 
-    y -= line_spacing + 3.0f;
-
-    // TURBINE METRICS divider
+    // TURBINE METRICS
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4f(1.0f, 0.5f, 0.0f, 0.2f);
     glBegin(GL_LINES);
     glVertex2f(x, y);
-    glVertex2f(x + 440.0f, y);
+    glVertex2f(x + 400.0f, y);
     glEnd();
     glDisable(GL_BLEND);
+    y -= 22.0f;
 
-    y -= 8.0f;
+    // y -= line_spacing - 4.0f;
 
     // Blade speed
     glColor3f(1.0f, 1.0f, 1.0f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Blade Speed:");
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
     glColor3f(1.0f, 0.6f, 0.2f);
-    glRasterPos2f(x + 120.0f, y);
+    glRasterPos2f(x + 150.0f, y);
     snprintf(hud, sizeof(hud), "%.1f°/fr", wing_speed);
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
 
     y -= line_spacing;
 
@@ -379,62 +382,61 @@ void render_hud(int fbW, int fbH)
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Output:");
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
     double power = 1000.0 * fabs(torqueFact * wing_speed * wing_speed);
     glColor3f(0.2f, 1.0f, 0.3f);
-    glRasterPos2f(x + 90.0f, y);
+    glRasterPos2f(x + 120.0f, y);
     snprintf(hud, sizeof(hud), "%.4f MW", power);
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    y -= line_spacing;
 
-    y -= line_spacing + 3.0f;
-
-    // STATUS SECTION divider
+    // STATUS SECTION
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor4f(0.8f, 0.5f, 0.2f, 0.2f);
     glBegin(GL_LINES);
     glVertex2f(x, y);
-    glVertex2f(x + 440.0f, y);
+    glVertex2f(x + 400.0f, y);
     glEnd();
     glDisable(GL_BLEND);
+    y -= 22.0f;
 
-    y -= 8.0f;
-
-    // Status indicator
+    // Random mode indicator
     glColor3f(1.0f, 1.0f, 1.0f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Status:");
     for (char *c = hud; *c; c++)
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
     if (isRandom)
     {
         glColor3f(0.2f, 1.0f, 0.5f);
-        glRasterPos2f(x + 90.0f, y);
+        glRasterPos2f(x + 120.0f, y);
         const char *status = "● RANDOM WIND";
         for (const char *c = status; *c; c++)
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
     }
     else
     {
         glColor3f(1.0f, 0.9f, 0.2f);
-        glRasterPos2f(x + 90.0f, y);
+        glRasterPos2f(x + 120.0f, y);
         const char *status = "● MANUAL CONTROL";
         for (const char *c = status; *c; c++)
-            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
     }
+    y -= line_spacing + 8.0f;
 
-    y -= line_spacing + 4.0f;
-    
-    // Footer text
+    // FOOTER - Controls
     glColor3f(0.5f, 0.6f, 0.7f);
     glRasterPos2f(x, y);
-    const char *footer = "[ Mouse Drag: Orbit  |  Scroll: Zoom ]";
+    const char *footer = "[ Mouse Drag: Orbit  |  Scroll: Zoom  |  R: Toggle Random ]";
     for (const char *c = footer; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+    y -= 18.0f;
 
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
 
     glMatrixMode(GL_PROJECTION);
