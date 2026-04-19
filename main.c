@@ -56,8 +56,8 @@ int use_stencil_shadows = 1;
 int night_mode = 0;
 
 // Power threshold for house lights
-#define POWER_THRESHOLD 0.2 // Power output threshold (MW) to turn on lights
-float current_power = 0.0;  // Current power output
+#define POWER_THRESHOLD 0.075 // Power output threshold (MW) to turn on lights
+float current_power = 0.0;    // Current power output
 
 // Stars data
 #define NUM_STARS 1000
@@ -178,10 +178,16 @@ void key_callback(GLFWwindow *w, int key, int scancode, int action, int mods)
                 progstep -= progstep_acc;
         }
         // Wind direction
-        if (key == GLFW_KEY_LEFT)
+        if (key == GLFW_KEY_LEFT){
             wind_y -= r_step;
-        if (key == GLFW_KEY_RIGHT)
+            wind_y = fmod(wind_y, 360.0);
+            if (wind_y < 0.0) wind_y += 360.0;
+        }
+        if (key == GLFW_KEY_RIGHT){
             wind_y += r_step;
+            wind_y = fmod(wind_y, 360.0);
+            if (wind_y < 0.0) wind_y += 360.0;
+        }
         // Camera orbit
         if (key == GLFW_KEY_A)
             camYaw -= (float)r_step;
@@ -236,6 +242,8 @@ void update_physics(void)
         }
         progstep += (0.008 * (wind_speed_target - progstep * 1000.0)) / 1000.0;
         wind_y += 0.002 * (wind_angle_target - wind_y);
+        wind_y = fmod(wind_y, 360.0);
+        if (wind_y < 0.0) wind_y += 360.0;
     }
 
     double acc = progstep * cos(wind_y / 180.0 * M_PI) * wind_acc_factor - wing_speed * turbine_factor;
@@ -346,6 +354,109 @@ void render_crescent_moon(void)
 }
 
 // ---------------------------------------------------------------
+// Render 2D wind direction arrow compass on HUD (below dashboard)
+// ---------------------------------------------------------------
+void render_wind_direction_arrow(int fbW, int fbH)
+{
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, fbW, 0, fbH, -1, 1);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_TEXTURE_2D);
+
+    // Wind compass position (below dashboard in leftmost corner)
+    float compass_x = 400.0f;              // Relative to left edge
+    float compass_y = (float)fbH - 105.0f; // Below dashboard
+    float compass_radius = 30.0f;
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Draw compass circle background
+    glColor4f(0.1f, 0.2f, 0.3f, 0.7f);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(compass_x, compass_y);
+    for (int i = 0; i <= 32; i++)
+    {
+        float angle = (float)i / 32.0f * 2.0f * M_PI;
+        glVertex2f(compass_x + cosf(angle) * compass_radius,
+                   compass_y + sinf(angle) * compass_radius);
+    }
+    glEnd();
+
+    // Draw compass circle outline
+    glColor4f(0.0f, 0.7f, 1.0f, 0.6f);
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < 32; i++)
+    {
+        float angle = (float)i / 32.0f * 2.0f * M_PI;
+        glVertex2f(compass_x + cosf(angle) * compass_radius,
+                   compass_y + sinf(angle) * compass_radius);
+    }
+    glEnd();
+
+    // Draw cardinal directions (N, S, E, W)
+    glColor3f(0.5f, 0.8f, 1.0f);
+
+    // glRasterPos2f(compass_x - 3.5f, compass_y + compass_radius + 6.0f);
+    // glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, 'N');
+
+    // glRasterPos2f(compass_x - 3.0f, compass_y - compass_radius - 15.0f);
+    // glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, 'S');
+
+    // glRasterPos2f(compass_x + compass_radius + 4.5f, compass_y - 5.0f);
+    // glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, 'E');
+
+    // glRasterPos2f(compass_x - compass_radius - 13.0f, compass_y - 5.0f);
+    // glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, 'W');
+
+    // Draw wind direction arrow pointing toward wind source
+    float wind_angle_rad = (90.0f - (float)wind_y) * M_PI / 180.0f;
+    float arrow_length = compass_radius * 0.65f;
+    float arrow_end_x = compass_x + cosf(wind_angle_rad) * arrow_length;
+    float arrow_end_y = compass_y + sinf(wind_angle_rad) * arrow_length;
+
+    // Arrow shaft (bright orange/red)
+    glColor3f(1.0f, 0.4f, 0.2f);
+    glLineWidth(3.0f);
+    glBegin(GL_LINES);
+    glVertex2f(compass_x, compass_y);
+    glVertex2f(arrow_end_x, arrow_end_y);
+    glEnd();
+    glLineWidth(1.0f);
+
+    // Arrow head (triangular)
+    float arrow_size = 8.0f;
+    float head_angle1 = wind_angle_rad - 0.4f;
+    float head_angle2 = wind_angle_rad + 0.4f;
+
+    glColor3f(1.0f, 0.6f, 0.3f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(arrow_end_x, arrow_end_y);
+    glVertex2f(arrow_end_x - cosf(head_angle1) * arrow_size,
+               arrow_end_y - sinf(head_angle1) * arrow_size);
+    glVertex2f(arrow_end_x - cosf(head_angle2) * arrow_size,
+               arrow_end_y - sinf(head_angle2) * arrow_size);
+    glEnd();
+
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+}
+
+// ---------------------------------------------------------------
 // Render window lights from the house when power is above threshold
 // ---------------------------------------------------------------
 void render_house_lights(void)
@@ -356,7 +467,7 @@ void render_house_lights(void)
 
     // Calculate brightness based on power output (normalized)
     float brightness = fminf((current_power - POWER_THRESHOLD) / 0.5f, 1.0f);
-    brightness = fmaxf(brightness, 0.3f); // Min brightness
+    brightness = fmaxf(brightness, 0.6f); // Min brightness
 
     glDisable(GL_LIGHTING);
     glEnable(GL_BLEND);
@@ -365,38 +476,50 @@ void render_house_lights(void)
     // Warm yellow light color for windows
     glColor4f(1.0f, 0.95f, 0.7f, brightness);
 
-    // Render window lights as small glowing quads
-    // These are approximate positions for typical house windows
-    float windows[][3] = {
-        {sceneCX - 8.0f, sceneCY + 5.0f, sceneCZ + 2.0f}, // Left side windows
-        {sceneCX - 8.0f, sceneCY + 5.0f, sceneCZ - 2.0f},
-        {sceneCX - 8.0f, sceneCY + 8.0f, sceneCZ + 2.0f},
-        {sceneCX - 8.0f, sceneCY + 8.0f, sceneCZ - 2.0f},
-        {sceneCX + 5.0f, sceneCY + 5.0f, sceneCZ + 2.0f}, // Right side windows
-        {sceneCX + 5.0f, sceneCY + 5.0f, sceneCZ - 2.0f},
-        {sceneCX + 5.0f, sceneCY + 8.0f, sceneCZ + 2.0f},
-        {sceneCX + 5.0f, sceneCY + 8.0f, sceneCZ - 2.0f},
-        {sceneCX + 2.0f, sceneCY + 5.0f, sceneCZ + 8.0f}, // Front windows
-        {sceneCX + 2.0f, sceneCY + 8.0f, sceneCZ + 8.0f},
+    // Window data: position and rotation (in degrees around Y axis)
+    typedef struct
+    {
+        float x, y, z;
+        float rotation; // 0, 90, 180, 270 degrees
+    } WindowLight;
+
+    WindowLight windows[] = {
+        // Front/back windows (0 degree rotation - looking along Z axis)
+        {sceneCX + 2.65f, sceneCY - 1.0f, sceneCZ + 3.54f, 0.0f},
+        {sceneCX - 0.3f, sceneCY - 1.0f, sceneCZ - 3.58f, 0.0f},
+        {sceneCX + 2.55f, sceneCY - 1.0f, sceneCZ - 3.58f, 180.0f},
+
+        // Left side windows (90 degree rotation - looking along X axis)
+        {sceneCX + 0.98f, sceneCY - 1.0f, sceneCZ + 2.2f, 90.0f},
+        {sceneCX - 2.58f, sceneCY - 1.0f, sceneCZ - 1.55f, 90.0f},
+
+        // Right side windows (270 degree rotation - looking along X axis)
+        {sceneCX + 4.58f, sceneCY - 1.0f, sceneCZ + 1.2f, 270.0f},
+        {sceneCX + 4.58f, sceneCY - 1.0f, sceneCZ - 1.8f, 270.0f},
     };
 
     int num_windows = sizeof(windows) / sizeof(windows[0]);
 
-    glBegin(GL_QUADS);
+    float xsize = 0.4f;
+    float ysize = 0.6f;
+
+    // Draw each window with its own transformation
     for (int i = 0; i < num_windows; i++)
     {
-        float x = windows[i][0];
-        float y = windows[i][1];
-        float z = windows[i][2];
-        float size = 0.8f;
+        glPushMatrix();
+        glTranslatef(windows[i].x, windows[i].y, windows[i].z);
+        glRotatef(windows[i].rotation, 0.0f, 1.0f, 0.0f);
 
-        // Draw window quad
-        glVertex3f(x - size, y - size, z);
-        glVertex3f(x + size, y - size, z);
-        glVertex3f(x + size, y + size, z);
-        glVertex3f(x - size, y + size, z);
+        glBegin(GL_QUADS);
+        // Draw window quad centered at origin
+        glVertex3f(-xsize, -ysize, 0.0f);
+        glVertex3f(xsize, -ysize, 0.0f);
+        glVertex3f(xsize, ysize, 0.0f);
+        glVertex3f(-xsize, ysize, 0.0f);
+        glEnd();
+
+        glPopMatrix();
     }
-    glEnd();
 
     // Add glow effect around windows
     glColor4f(1.0f, 0.95f, 0.7f, brightness * 0.3f);
@@ -407,7 +530,7 @@ void render_house_lights(void)
     glBegin(GL_POINTS);
     for (int i = 0; i < num_windows; i++)
     {
-        glVertex3f(windows[i][0], windows[i][1], windows[i][2]);
+        glVertex3f(windows[i].x, windows[i].y, windows[i].z);
     }
     glEnd();
 
@@ -475,7 +598,7 @@ void render_hud(int fbW, int fbH)
     glVertex2f(panel_x, panel_y + panel_h);
     glEnd();
 
-     //border outline - bright cyan with some transparency
+    // border outline - bright cyan with some transparency
     glColor4f(0.0f, 0.7f, 1.0f, 0.6f);
     glBegin(GL_LINE_LOOP);
     glVertex2f(panel_x + 1.5f, panel_y + 1.5f);
@@ -497,7 +620,7 @@ void render_hud(int fbW, int fbH)
     for (const char *c = title; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
-    y -= line_spacing -10.0f;
+    y -= line_spacing - 10.0f;
 
     // Section divider
     glEnable(GL_BLEND);
@@ -865,22 +988,22 @@ void setup_lighting(void)
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
     // Dramatic lighting: very low ambient, high diffuse contrast for form shadows
-    float ambient[] = {0.15f, 0.15f, 0.2f, 1.0f};  // Very low ambient for deep shadows
-    float diffuse[] = {1.0f, 0.95f, 0.85f, 1.0f};  // Strong warm sunlight
-    float specular[] = {0.8f, 0.8f, 0.8f, 1.0f};   // Strong specular highlights
+    float ambient[] = {0.15f, 0.15f, 0.2f, 1.0f};    // Very low ambient for deep shadows
+    float diffuse[] = {1.0f, 0.95f, 0.85f, 1.0f};    // Strong warm sunlight
+    float specular[] = {0.8f, 0.8f, 0.8f, 1.0f};     // Strong specular highlights
     float light_pos[] = {20.0f, 40.0f, 20.0f, 0.0f}; // Directional light
 
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
     glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
-    
+
     // Set material properties for dramatic shading
     float mat_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};
     float mat_diffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
     float mat_specular[] = {0.5f, 0.5f, 0.5f, 1.0f};
     float mat_shininess[] = {32.0f};
-    
+
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
@@ -1059,6 +1182,7 @@ int main(int argc, char *argv[])
 
         // HUD overlay
         render_hud(fbW, fbH);
+        render_wind_direction_arrow(fbW, fbH);
 
         glfwSwapBuffers(win);
         glfwPollEvents();
