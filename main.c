@@ -317,7 +317,11 @@ void draw_primitive(cgltf_primitive* prim)
     if (!pos) return;
 
     int has_tex = 0;
+    float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+    // Check for texture and color from material
     if (prim->material && prim->material->has_pbr_metallic_roughness) {
+        // Try to apply baseColorTexture
         cgltf_texture* t =
             prim->material->pbr_metallic_roughness.base_color_texture.texture;
         if (t && t->image) {
@@ -330,9 +334,16 @@ void draw_primitive(cgltf_primitive* prim)
                 }
             }
         }
+
+        // Apply baseColorFactor if present (even if texture is used, for modulation)
+        float* bcf = prim->material->pbr_metallic_roughness.base_color_factor;
+        if (bcf) {
+            for (int j = 0; j < 4; j++)
+                color[j] = bcf[j];
+        }
     }
 
-    glColor3f(1.0f, 1.0f, 1.0f);
+    glColor4fv(color);
 
     glBegin(GL_TRIANGLES);
     for (cgltf_size i = 0; i < prim->indices->count; i++) {
