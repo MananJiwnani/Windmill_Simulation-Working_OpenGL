@@ -52,6 +52,21 @@ cgltf_data *model_data = NULL;
 // Shadow volumes (stencil shadows)
 int use_stencil_shadows = 1;
 
+// Night mode toggle
+int night_mode = 0;
+
+// Power threshold for house lights
+#define POWER_THRESHOLD 0.2 // Power output threshold (MW) to turn on lights
+float current_power = 0.0;  // Current power output
+
+// Stars data
+#define NUM_STARS 1000
+float stars_x[NUM_STARS];
+float stars_y[NUM_STARS];
+float stars_z[NUM_STARS];
+float stars_brightness[NUM_STARS];
+int stars_initialized = 0;
+
 // Light properties - fixed 5 o'clock sun position
 // 5 o'clock = 17:00, which is 11 hours after 6 AM
 // Hour angle = (17 - 6) * 15 = 165°
@@ -197,6 +212,11 @@ void key_callback(GLFWwindow *w, int key, int scancode, int action, int mods)
         {
             use_stencil_shadows = 1 - use_stencil_shadows;
         }
+        // Toggle night mode
+        if (key == GLFW_KEY_N)
+        {
+            night_mode = 1 - night_mode;
+        }
         if (key == GLFW_KEY_ESCAPE)
             glfwSetWindowShouldClose(w, GLFW_TRUE);
     }
@@ -226,6 +246,175 @@ void update_physics(void)
         wing_z -= 360.0;
     if (wing_z < 0.0)
         wing_z += 360.0;
+}
+
+// ---------------------------------------------------------------
+// Initialize stars for night sky
+// ---------------------------------------------------------------
+void init_stars(void)
+{
+    if (stars_initialized)
+        return;
+
+    srand(12345); // Fixed seed for consistent star positions
+
+    for (int i = 0; i < NUM_STARS; i++)
+    {
+        // Generate random position on a far-away sphere
+        float theta = (float)(rand() % 360) * M_PI / 180.0f;
+        float phi = (float)(rand() % 180) * M_PI / 180.0f;
+        float radius = 300.0f; // Far away sphere
+
+        stars_x[i] = radius * sinf(phi) * cosf(theta);
+        stars_y[i] = radius * cosf(phi);
+        stars_z[i] = radius * sinf(phi) * sinf(theta);
+
+        // Random brightness (0.3 to 1.0)
+        stars_brightness[i] = 0.3f + (float)(rand() % 70) / 100.0f;
+    }
+
+    stars_initialized = 1;
+}
+
+// ---------------------------------------------------------------
+// Render stars in night mode
+// ---------------------------------------------------------------
+void render_stars(void)
+{
+    if (!night_mode)
+        return;
+
+    init_stars();
+
+    glDisable(GL_LIGHTING);
+    glEnable(GL_POINT_SMOOTH);
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+    glPointSize(2.0f); // Moderate star size
+
+    glBegin(GL_POINTS);
+    for (int i = 0; i < NUM_STARS; i++)
+    {
+        // Twinkle effect using sine wave based on star index and time
+        float twinkle = 0.5f + 0.5f * sinf(glfwGetTime() * 2.0f + (float)i);
+        float brightness = stars_brightness[i] * twinkle;
+
+        glColor3f(brightness, brightness, brightness * 0.95f); // Slight yellow tint
+        glVertex3f(stars_x[i], stars_y[i], stars_z[i]);
+    }
+    glEnd();
+
+    glDisable(GL_POINT_SMOOTH);
+    glPointSize(1.0f);
+    glEnable(GL_LIGHTING);
+}
+
+// ---------------------------------------------------------------
+// Render simple crescent moon
+// ---------------------------------------------------------------
+void render_crescent_moon(void)
+{
+    if (!night_mode)
+        return;
+
+    // Position moon in front of the scene (towards camera)
+    float moon_x = sceneCX - 15.0f;
+    float moon_y = sceneCY + 20.0f;
+    float moon_z = sceneCZ + 25.0f; // Positive z = in front of scene
+
+    glPushMatrix();
+    glTranslatef(moon_x, moon_y, moon_z);
+
+    glDisable(GL_LIGHTING);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Draw bright crescent part
+    glColor4f(1.0f, 0.95f, 0.75f, 0.95f);
+    GLUquadric *quad = gluNewQuadric();
+    gluSphere(quad, 2.0f, 64, 64);
+
+    // Draw shadow sphere to create crescent effect
+    // glColor4f(0.05f, 0.08f, 0.15f, 1.0f);  // Match night sky color
+    // glPushMatrix();
+    // glTranslatef(6.0f, 0.0f, 0.0f);  // Offset to create crescent
+    // gluSphere(quad, 8.0f, 64, 64);
+    // glPopMatrix();
+
+    glDisable(GL_BLEND);
+    glEnable(GL_LIGHTING);
+    glPopMatrix();
+}
+
+// ---------------------------------------------------------------
+// Render window lights from the house when power is above threshold
+// ---------------------------------------------------------------
+void render_house_lights(void)
+{
+    // Only show lights at night and when power output is sufficient
+    if (!night_mode || current_power < POWER_THRESHOLD)
+        return;
+
+    // Calculate brightness based on power output (normalized)
+    float brightness = fminf((current_power - POWER_THRESHOLD) / 0.5f, 1.0f);
+    brightness = fmaxf(brightness, 0.3f); // Min brightness
+
+    glDisable(GL_LIGHTING);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Warm yellow light color for windows
+    glColor4f(1.0f, 0.95f, 0.7f, brightness);
+
+    // Render window lights as small glowing quads
+    // These are approximate positions for typical house windows
+    float windows[][3] = {
+        {sceneCX - 8.0f, sceneCY + 5.0f, sceneCZ + 2.0f}, // Left side windows
+        {sceneCX - 8.0f, sceneCY + 5.0f, sceneCZ - 2.0f},
+        {sceneCX - 8.0f, sceneCY + 8.0f, sceneCZ + 2.0f},
+        {sceneCX - 8.0f, sceneCY + 8.0f, sceneCZ - 2.0f},
+        {sceneCX + 5.0f, sceneCY + 5.0f, sceneCZ + 2.0f}, // Right side windows
+        {sceneCX + 5.0f, sceneCY + 5.0f, sceneCZ - 2.0f},
+        {sceneCX + 5.0f, sceneCY + 8.0f, sceneCZ + 2.0f},
+        {sceneCX + 5.0f, sceneCY + 8.0f, sceneCZ - 2.0f},
+        {sceneCX + 2.0f, sceneCY + 5.0f, sceneCZ + 8.0f}, // Front windows
+        {sceneCX + 2.0f, sceneCY + 8.0f, sceneCZ + 8.0f},
+    };
+
+    int num_windows = sizeof(windows) / sizeof(windows[0]);
+
+    glBegin(GL_QUADS);
+    for (int i = 0; i < num_windows; i++)
+    {
+        float x = windows[i][0];
+        float y = windows[i][1];
+        float z = windows[i][2];
+        float size = 0.8f;
+
+        // Draw window quad
+        glVertex3f(x - size, y - size, z);
+        glVertex3f(x + size, y - size, z);
+        glVertex3f(x + size, y + size, z);
+        glVertex3f(x - size, y + size, z);
+    }
+    glEnd();
+
+    // Add glow effect around windows
+    glColor4f(1.0f, 0.95f, 0.7f, brightness * 0.3f);
+    glPointSize(8.0f);
+    glEnable(GL_POINT_SMOOTH);
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+
+    glBegin(GL_POINTS);
+    for (int i = 0; i < num_windows; i++)
+    {
+        glVertex3f(windows[i][0], windows[i][1], windows[i][2]);
+    }
+    glEnd();
+
+    glDisable(GL_POINT_SMOOTH);
+    glPointSize(1.0f);
+    glDisable(GL_BLEND);
+    glEnable(GL_LIGHTING);
 }
 
 // ---------------------------------------------------------------
@@ -428,12 +617,37 @@ void render_hud(int fbW, int fbH)
         for (const char *c = status; *c; c++)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
     }
+    y -= line_spacing;
+
+    // Night mode indicator
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glRasterPos2f(x, y);
+    snprintf(hud, sizeof(hud), "Light:");
+    for (char *c = hud; *c; c++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+
+    if (night_mode)
+    {
+        glColor3f(0.5f, 0.7f, 1.0f);
+        glRasterPos2f(x + 120.0f, y);
+        const char *light_status = "● NIGHT MODE";
+        for (const char *c = light_status; *c; c++)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    }
+    else
+    {
+        glColor3f(1.0f, 0.8f, 0.2f);
+        glRasterPos2f(x + 120.0f, y);
+        const char *light_status = "● DAY MODE";
+        for (const char *c = light_status; *c; c++)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    }
     y -= line_spacing + 8.0f;
 
     // FOOTER - Controls
     glColor3f(0.5f, 0.6f, 0.7f);
     glRasterPos2f(x, y);
-    const char *footer = "[ Mouse Drag: Orbit  |  Scroll: Zoom  |  R: Toggle Random ]";
+    const char *footer = "[ Mouse Drag: Orbit  |  R: Random  |  N: Night Mode  |  ESC: Quit ]";
     for (const char *c = footer; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
     y -= 18.0f;
@@ -752,7 +966,15 @@ int main(int argc, char *argv[])
         // Physics
         update_physics();
 
-        glClearColor(0.53f, 0.81f, 0.98f, 1.0f);
+        // Set background color based on night mode
+        if (night_mode)
+        {
+            glClearColor(0.05f, 0.08f, 0.15f, 1.0f); // Dark blue night sky
+        }
+        else
+        {
+            glClearColor(0.53f, 0.81f, 0.98f, 1.0f); // Light blue day sky
+        }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         int fbW, fbH;
@@ -780,14 +1002,44 @@ int main(int argc, char *argv[])
                   sceneCX, sceneCY, sceneCZ,
                   0.0, 1.0, 0.0);
 
+        // Update lighting based on night mode
+        if (night_mode)
+        {
+            // Night lighting - moonlight effect
+            float ambient[] = {0.1f, 0.12f, 0.2f, 1.0f}; // Very dim cool ambient
+            float diffuse[] = {0.3f, 0.35f, 0.5f, 1.0f}; // Dim moonlight
+            glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+        }
+        else
+        {
+            // Day lighting - sunlight
+            float ambient[] = {0.3f, 0.3f, 0.4f, 1.0f};   // Cooler ambient
+            float diffuse[] = {1.0f, 0.95f, 0.85f, 1.0f}; // Warm sunlight
+            glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+            glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+        }
+
         // Update light position based on fixed sun position (directional light)
         float light_pos_arr[] = {light_pos[0], light_pos[1], light_pos[2], 0.0f};
         glLightfv(GL_LIGHT0, GL_POSITION, light_pos_arr);
+
+        // Update current power output
+        current_power = 1000.0 * fabs(torqueFact * wing_speed * wing_speed);
 
         // Render scene
         if (model_data)
             for (cgltf_size i = 0; i < model_data->scenes[0].nodes_count; i++)
                 render_node(model_data->scenes[0].nodes[i]);
+
+        // Render stars in night mode
+        render_stars();
+
+        // Render crescent moon
+        render_crescent_moon();
+
+        // Render house window lights when power is sufficient
+        render_house_lights();
 
         // Apply form shadows (shadows on surfaces)
         if (use_stencil_shadows)
