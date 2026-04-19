@@ -211,8 +211,20 @@ void render_hud(int fbW, int fbH)
     float x      = 20.0f;
     float y      = (float)fbH - 35.0f;
 
+    // Draw semi-transparent background panel
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(0.0f, 0.0f, 0.0f, 0.65f);
+    glBegin(GL_QUADS);
+    glVertex2f(10.0f, (float)fbH - 330.0f);
+    glVertex2f(500.0f, (float)fbH - 330.0f);
+    glVertex2f(500.0f, (float)fbH - 20.0f);
+    glVertex2f(10.0f, (float)fbH - 20.0f);
+    glEnd();
+    glDisable(GL_BLEND);
+
     // Title
-    glColor3f(0.95f, 0.85f, 0.2f);
+    glColor3f(1.0f, 0.95f, 0.3f);
     glRasterPos2f(x, y);
     const char* title = "WINDMILL FARM SIM";
     for (const char* c = title; *c; c++)
@@ -220,7 +232,7 @@ void render_hud(int fbW, int fbH)
     y -= line_h;
 
     // Divider
-    glColor3f(0.5f, 0.5f, 0.5f);
+    glColor3f(0.7f, 0.7f, 0.7f);
     glRasterPos2f(x, y);
     const char* div = "-----------------------------";
     for (const char* c = div; *c; c++)
@@ -228,7 +240,7 @@ void render_hud(int fbW, int fbH)
     y -= line_h;
 
     // Wind speed
-    glColor3f(0.2f, 1.0f, 1.0f);
+    glColor3f(0.3f, 1.0f, 1.0f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Wind Speed : %.3f km/hr",
              1000.0 * fabs(progstep));
@@ -237,7 +249,7 @@ void render_hud(int fbW, int fbH)
     y -= line_h;
 
     // Wind direction
-    glColor3f(0.4f, 0.8f, 1.0f);
+    glColor3f(0.5f, 1.0f, 1.0f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Wind Dir   : %.1f deg", wind_y);
     for (char* c = hud; *c; c++)
@@ -245,7 +257,7 @@ void render_hud(int fbW, int fbH)
     y -= line_h;
 
     // Wing speed
-    glColor3f(1.0f, 0.4f, 0.4f);
+    glColor3f(1.0f, 0.5f, 0.5f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Blade Speed: %.4f deg/frame", wing_speed);
     for (char* c = hud; *c; c++)
@@ -253,7 +265,7 @@ void render_hud(int fbW, int fbH)
     y -= line_h;
 
     // Power
-    glColor3f(0.8f, 0.8f, 0.8f);
+    glColor3f(1.0f, 1.0f, 0.8f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Power      : %.4f MW",
              1000.0 * fabs(torqueFact * wing_speed * wing_speed));
@@ -262,9 +274,9 @@ void render_hud(int fbW, int fbH)
     y -= line_h;
 
     // Random mode
-    glColor3f(isRandom ? 0.2f : 0.6f,
-              isRandom ? 1.0f : 0.6f,
-              0.2f);
+    glColor3f(isRandom ? 0.5f : 0.8f,
+              isRandom ? 1.0f : 0.8f,
+              0.3f);
     glRasterPos2f(x, y);
     snprintf(hud, sizeof(hud), "Random Wind: %s", isRandom ? "ON" : "OFF");
     for (char* c = hud; *c; c++)
@@ -272,7 +284,7 @@ void render_hud(int fbW, int fbH)
     y -= (line_h * 1.5f);
 
     // Controls hint
-    glColor3f(0.55f, 0.55f, 0.55f);
+    glColor3f(0.8f, 0.8f, 0.8f);
     glRasterPos2f(x, y);
     const char* hint1 = "UP/DOWN: wind speed   A/D: wind dir";
     for (const char* c = hint1; *c; c++)
