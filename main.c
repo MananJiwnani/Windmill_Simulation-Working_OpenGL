@@ -46,6 +46,22 @@ double lastMouseX = 0.0, lastMouseY = 0.0;
 int isRotating = 0;
 
 // GL / GLTF resources
+GLuint*     gl_textures = NULL;
+cgltf_data* model_data  = NULL;
+
+// Shadow volumes (stencil shadows)
+int use_stencil_shadows = 1;
+
+// Light properties - fixed 5 o'clock sun position
+// 5 o'clock = 17:00, which is 11 hours after 6 AM
+// Hour angle = (17 - 6) * 15 = 165°
+double sun_azimuth = 165.0;  // 5 o'clock position (165° from north)
+double sun_elevation = 40.0; // Afternoon elevation angle
+
+// Current light direction (will be updated once at startup)
+float light_dir[3];          // Normalized direction TO the light
+float light_pos[3];          // Position far away
+
 GLuint *gl_textures = NULL;
 cgltf_data *model_data = NULL;
 
@@ -178,6 +194,10 @@ void key_callback(GLFWwindow *w, int key, int scancode, int action, int mods)
             isRandom = 1 - isRandom;
             wind_speed_target = (double)(rand() % 50);
             wind_angle_target = (double)(rand() % 360);
+        }
+        // Toggle stencil shadows
+        if (key == GLFW_KEY_T) {
+            use_stencil_shadows = 1 - use_stencil_shadows;
         }
         if (key == GLFW_KEY_ESCAPE)
             glfwSetWindowShouldClose(w, GLFW_TRUE);
@@ -455,6 +475,15 @@ void render_hud(int fbW, int fbH)
     const char *footer = "[ Mouse Drag: Orbit  |  Scroll: Zoom  |  R: Toggle Random ]";
     for (const char *c = footer; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+    const char* hint3 = "Mouse drag: orbit   Scroll: zoom   ESC: quit";
+    for (const char* c = hint3; *c; c++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    y -= 18.0f;
+
+    glRasterPos2f(x, y);
+    const char* hint4 = "+/-: speed up/slow down sun   T: toggle shadows";
+    for (const char* c = hint4; *c; c++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
@@ -578,6 +607,88 @@ void render_node(cgltf_node *node)
     glPopMatrix();
 }
 
+
+// ---------------------------------------------------------------
+// Sun position initialization (fixed 5 o'clock)
+// ---------------------------------------------------------------
+void init_sun_position(void)
+{
+    // Convert hour angle and elevation to radians
+    float azimuth = glm_rad((float)sun_azimuth);
+    float elev_rad = glm_rad((float)sun_elevation);
+    
+    // Calculate light direction (FROM sun TO scene)
+    light_dir[0] = sinf(azimuth) * cosf(elev_rad);
+    light_dir[1] = sinf(elev_rad);
+    light_dir[2] = cosf(azimuth) * cosf(elev_rad);
+    
+    // Calculate light position (far away in opposite direction)
+    light_pos[0] = -light_dir[0] * 100.0f;
+    light_pos[1] = -light_dir[1] * 100.0f;
+    light_pos[2] = -light_dir[2] * 100.0f;
+}
+
+// ---------------------------------------------------------------
+// Stencil shadow rendering
+// ---------------------------------------------------------------
+void render_shadow_volume(void)
+{
+    // Render shadow volumes using stencil buffer with more dramatic effect
+    
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_ALWAYS, 0, 0);
+    glStencilOp(GL_KEEP, GL_INCR_WRAP, GL_INCR_WRAP);
+    
+    // Render scene geometry to stencil buffer
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDepthMask(GL_FALSE);
+    
+    if (model_data)
+        for (cgltf_size i = 0; i < model_data->scenes[0].nodes_count; i++)
+            render_node(model_data->scenes[0].nodes[i]);
+    
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthMask(GL_TRUE);
+    
+    // Now render shadow pass - darken areas where stencil > 0
+    glStencilFunc(GL_GREATER, 0, ~0);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    
+    glDisable(GL_LIGHTING);
+    glColor4f(0.0f, 0.0f, 0.0f, 0.75f);  // Increased from 0.5 to 0.75 for more dramatic shadows
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // Draw a full-screen quad to apply shadow tint
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, 1, 0, 1, -1, 1);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    glBegin(GL_QUADS);
+    glVertex3f(0, 0, 0);
+    glVertex3f(1, 0, 0);
+    glVertex3f(1, 1, 0);
+    glVertex3f(0, 1, 0);
+    glEnd();
+    
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    
+    glDisable(GL_BLEND);
+    glEnable(GL_LIGHTING);
+    
+    glDisable(GL_STENCIL_TEST);
+    glClear(GL_STENCIL_BUFFER_BIT);
+}
+
+
 // ---------------------------------------------------------------
 // Lighting
 // ---------------------------------------------------------------
@@ -588,16 +699,23 @@ void setup_lighting(void)
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
+    // Light properties - position will be updated each frame based on sun_hour
+    float ambient[]   = {  0.3f,  0.3f,  0.4f, 1.0f };  // Slightly cooler ambient
+    float diffuse[]   = {  1.0f,  0.95f,  0.85f, 1.0f };  // Warm sunlight
+    float specular[]  = {  0.5f,  0.5f,  0.5f, 1.0f };
     float light_pos[] = {20.0f, 40.0f, 20.0f, 1.0f};
     float ambient[] = {0.4f, 0.4f, 0.4f, 1.0f};
     float diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float specular[] = {0.3f, 0.3f, 0.3f, 1.0f};
 
+    glLightfv(GL_LIGHT0, GL_AMBIENT,  ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE,  diffuse);
     glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
 }
+
 
 // ---------------------------------------------------------------
 // main
@@ -653,6 +771,9 @@ int main(int argc, char *argv[])
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_NORMALIZE);
     setup_lighting();
+    
+    // Initialize sun position (fixed 5 o'clock)
+    init_sun_position();
 
     // Load GLTF
     cgltf_options opt = {0};
@@ -688,7 +809,7 @@ int main(int argc, char *argv[])
         update_physics();
 
         glClearColor(0.53f, 0.81f, 0.98f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         int fbW, fbH;
         glfwGetFramebufferSize(win, &fbW, &fbH);
@@ -715,6 +836,13 @@ int main(int argc, char *argv[])
                   sceneCX, sceneCY, sceneCZ,
                   0.0, 1.0, 0.0);
 
+        // Update light position based on current sun position (directional light)
+        float light_pos_arr[] = { light_pos[0], light_pos[1], light_pos[2], 0.0f };
+        glLightfv(GL_LIGHT0, GL_POSITION, light_pos_arr);
+        
+        // Fill light positioned opposite and to the side for soft shadows
+        float fill_pos[] = { light_pos[0] + 30.0f, 30.0f, light_pos[2] + 30.0f, 0.0f };
+        glLightfv(GL_LIGHT1, GL_POSITION, fill_pos);
         // World-fixed light
         float light_pos[] = {20.0f, 40.0f, 20.0f, 1.0f};
         glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
@@ -723,6 +851,10 @@ int main(int argc, char *argv[])
         if (model_data)
             for (cgltf_size i = 0; i < model_data->scenes[0].nodes_count; i++)
                 render_node(model_data->scenes[0].nodes[i]);
+
+        // Apply stencil shadows
+        if (use_stencil_shadows)
+            render_shadow_volume();
 
         // HUD overlay
         render_hud(fbW, fbH);
