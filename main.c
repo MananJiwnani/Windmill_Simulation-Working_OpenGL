@@ -459,7 +459,7 @@ void render_hud(int fbW, int fbH)
     char hud[256];
     float panel_x = 15.0f;
     float panel_y = (float)fbH - 350.0f;
-    float panel_w = 520.0f;
+    float panel_w = 480.0f;
     float panel_h = 330.0f;
 
     // Modern dark background with gradient effect
@@ -475,13 +475,13 @@ void render_hud(int fbW, int fbH)
     glVertex2f(panel_x, panel_y + panel_h);
     glEnd();
 
-    // Accent border top
+     //border outline - bright cyan with some transparency
     glColor4f(0.0f, 0.7f, 1.0f, 0.6f);
-    glBegin(GL_QUADS);
-    glVertex2f(panel_x, panel_y + panel_h - 3.0f);
-    glVertex2f(panel_x + panel_w, panel_y + panel_h - 3.0f);
-    glVertex2f(panel_x + panel_w, panel_y + panel_h);
-    glVertex2f(panel_x, panel_y + panel_h);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(panel_x + 1.5f, panel_y + 1.5f);
+    glVertex2f(panel_x + panel_w - 1.5f, panel_y + 1.5f);
+    glVertex2f(panel_x + panel_w - 1.5f, panel_y + panel_h - 1.5f);
+    glVertex2f(panel_x + 1.5f, panel_y + panel_h - 1.5f);
     glEnd();
 
     glDisable(GL_BLEND);
@@ -497,7 +497,7 @@ void render_hud(int fbW, int fbH)
     for (const char *c = title; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
-    y -= line_spacing + 8.0f;
+    y -= line_spacing -10.0f;
 
     // Section divider
     glEnable(GL_BLEND);
@@ -505,11 +505,11 @@ void render_hud(int fbW, int fbH)
     glColor4f(0.0f, 0.7f, 1.0f, 0.3f);
     glBegin(GL_LINES);
     glVertex2f(x, y);
-    glVertex2f(x + 480.0f, y);
+    glVertex2f(x + 400.0f, y);
     glEnd();
     glDisable(GL_BLEND);
 
-    y -= 12.0f;
+    y -= 22.0f;
 
     // Wind speed with progress bar
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -546,10 +546,10 @@ void render_hud(int fbW, int fbH)
     glColor4f(1.0f, 0.5f, 0.0f, 0.2f);
     glBegin(GL_LINES);
     glVertex2f(x, y);
-    glVertex2f(x + 480.0f, y);
+    glVertex2f(x + 400.0f, y);
     glEnd();
     glDisable(GL_BLEND);
-    y -= 12.0f;
+    y -= 22.0f;
 
     // y -= line_spacing - 4.0f;
 
@@ -581,7 +581,7 @@ void render_hud(int fbW, int fbH)
     snprintf(hud, sizeof(hud), "%.4f MW", power);
     for (char *c = hud; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
-    y -= line_spacing + 6.0f;
+    y -= line_spacing;
 
     // STATUS SECTION
     glEnable(GL_BLEND);
@@ -589,10 +589,10 @@ void render_hud(int fbW, int fbH)
     glColor4f(0.8f, 0.5f, 0.2f, 0.2f);
     glBegin(GL_LINES);
     glVertex2f(x, y);
-    glVertex2f(x + 480.0f, y);
+    glVertex2f(x + 400.0f, y);
     glEnd();
     glDisable(GL_BLEND);
-    y -= 12.0f;
+    y -= 22.0f;
 
     // Random mode indicator
     glColor3f(1.0f, 1.0f, 1.0f);
@@ -797,62 +797,62 @@ void init_sun_position(void)
 // ---------------------------------------------------------------
 // Stencil shadow rendering
 // ---------------------------------------------------------------
-void render_shadow_volume(void)
-{
-    // Render shadow volumes using stencil buffer with more dramatic effect
+// void render_shadow_volume(void)
+// {
+//     // Render shadow volumes using stencil buffer with more dramatic effect
 
-    glEnable(GL_STENCIL_TEST);
-    glStencilFunc(GL_ALWAYS, 0, 0);
-    glStencilOp(GL_KEEP, GL_INCR_WRAP, GL_INCR_WRAP);
+//     glEnable(GL_STENCIL_TEST);
+//     glStencilFunc(GL_ALWAYS, 0, 0);
+//     glStencilOp(GL_KEEP, GL_INCR_WRAP, GL_INCR_WRAP);
 
-    // Render scene geometry to stencil buffer
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glDepthMask(GL_FALSE);
+//     // Render scene geometry to stencil buffer
+//     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+//     glDepthMask(GL_FALSE);
 
-    if (model_data)
-        for (cgltf_size i = 0; i < model_data->scenes[0].nodes_count; i++)
-            render_node(model_data->scenes[0].nodes[i]);
+//     if (model_data)
+//         for (cgltf_size i = 0; i < model_data->scenes[0].nodes_count; i++)
+//             render_node(model_data->scenes[0].nodes[i]);
 
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glDepthMask(GL_TRUE);
+//     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+//     glDepthMask(GL_TRUE);
 
-    // Now render shadow pass - darken areas where stencil > 0
-    glStencilFunc(GL_GREATER, 0, ~0);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+//     // Now render shadow pass - darken areas where stencil > 0
+//     glStencilFunc(GL_GREATER, 0, ~0);
+//     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
-    glDisable(GL_LIGHTING);
-    glColor4f(0.0f, 0.0f, 0.0f, 0.75f); // Increased from 0.5 to 0.75 for more dramatic shadows
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//     glDisable(GL_LIGHTING);
+//     glColor4f(0.0f, 0.0f, 0.0f, 0.75f); // Increased from 0.5 to 0.75 for more dramatic shadows
+//     glEnable(GL_BLEND);
+//     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Draw a full-screen quad to apply shadow tint
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0, 1, 0, 1, -1, 1);
+//     // Draw a full-screen quad to apply shadow tint
+//     glMatrixMode(GL_PROJECTION);
+//     glPushMatrix();
+//     glLoadIdentity();
+//     glOrtho(0, 1, 0, 1, -1, 1);
 
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
+//     glMatrixMode(GL_MODELVIEW);
+//     glPushMatrix();
+//     glLoadIdentity();
 
-    glBegin(GL_QUADS);
-    glVertex3f(0, 0, 0);
-    glVertex3f(1, 0, 0);
-    glVertex3f(1, 1, 0);
-    glVertex3f(0, 1, 0);
-    glEnd();
+//     glBegin(GL_QUADS);
+//     glVertex3f(0, 0, 0);
+//     glVertex3f(1, 0, 0);
+//     glVertex3f(1, 1, 0);
+//     glVertex3f(0, 1, 0);
+//     glEnd();
 
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
+//     glMatrixMode(GL_PROJECTION);
+//     glPopMatrix();
+//     glMatrixMode(GL_MODELVIEW);
+//     glPopMatrix();
 
-    glDisable(GL_BLEND);
-    glEnable(GL_LIGHTING);
+//     glDisable(GL_BLEND);
+//     glEnable(GL_LIGHTING);
 
-    glDisable(GL_STENCIL_TEST);
-    glClear(GL_STENCIL_BUFFER_BIT);
-}
+//     glDisable(GL_STENCIL_TEST);
+//     glClear(GL_STENCIL_BUFFER_BIT);
+// }
 
 // ---------------------------------------------------------------
 // Lighting
@@ -864,15 +864,27 @@ void setup_lighting(void)
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
-    // Light properties - position will be updated each frame based on sun_hour
-    float ambient[] = {0.3f, 0.3f, 0.4f, 1.0f};   // Slightly cooler ambient
-    float diffuse[] = {1.0f, 0.95f, 0.85f, 1.0f}; // Warm sunlight
-    // float specular[]  = {  0.5f,  0.5f,  0.5f, 1.0f };
-    float light_pos[] = {20.0f, 40.0f, 20.0f, 1.0f};
+    // Dramatic lighting: very low ambient, high diffuse contrast for form shadows
+    float ambient[] = {0.15f, 0.15f, 0.2f, 1.0f};  // Very low ambient for deep shadows
+    float diffuse[] = {1.0f, 0.95f, 0.85f, 1.0f};  // Strong warm sunlight
+    float specular[] = {0.8f, 0.8f, 0.8f, 1.0f};   // Strong specular highlights
+    float light_pos[] = {20.0f, 40.0f, 20.0f, 0.0f}; // Directional light
 
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
     glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
+    
+    // Set material properties for dramatic shading
+    float mat_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};
+    float mat_diffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
+    float mat_specular[] = {0.5f, 0.5f, 0.5f, 1.0f};
+    float mat_shininess[] = {32.0f};
+    
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, mat_ambient);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
 }
 
 // ---------------------------------------------------------------
@@ -1041,9 +1053,9 @@ int main(int argc, char *argv[])
         // Render house window lights when power is sufficient
         render_house_lights();
 
-        // Apply form shadows (shadows on surfaces)
-        if (use_stencil_shadows)
-            render_shadow_volume();
+        // // Apply form shadows (shadows on surfaces)
+        // if (use_stencil_shadows)
+        //     render_shadow_volume();
 
         // HUD overlay
         render_hud(fbW, fbH);
