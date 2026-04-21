@@ -25,6 +25,18 @@ extern int isRandom;
 extern double lastTime;
 
 /* ========================================
+   Camera Projection/View Mode
+   ======================================== */
+typedef enum {
+    CAMERA_PERSPECTIVE = 0,
+    CAMERA_ORTHO_FRONT,
+    CAMERA_ORTHO_LEFT,
+    CAMERA_ORTHO_RIGHT,
+    CAMERA_ORTHO_TOP
+} CameraViewMode;
+extern CameraViewMode camera_view_mode;
+
+/* ========================================
    Camera Control
    ======================================== */
 extern float camRadius;

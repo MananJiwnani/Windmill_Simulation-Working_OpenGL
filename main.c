@@ -50,6 +50,8 @@ float camRadius = 35.0f;
 float camPitch = 20.0f;
 float camYaw = 45.0f;
 
+CameraViewMode camera_view_mode = CAMERA_PERSPECTIVE;
+
 const float sceneCX = -1.0f;
 const float sceneCY = 3.0f;
 const float sceneCZ = 0.0f;
@@ -185,24 +187,59 @@ int main(int argc, char *argv[])
             fbH = 1;
         glViewport(0, 0, fbW, fbH);
 
-        /* Projection */
+
+        /* Projection and Camera View */
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluPerspective(45.0, (double)fbW / (double)fbH, 0.1, 500.0);
+        float orthoSize = 30.0f;
+        switch (camera_view_mode) {
+            case CAMERA_ORTHO_FRONT:
+                glOrtho(-orthoSize, orthoSize, -orthoSize, orthoSize, -200.0, 200.0);
+                break;
+            case CAMERA_ORTHO_LEFT:
+                glOrtho(-orthoSize, orthoSize, -orthoSize, orthoSize, -200.0, 200.0);
+                break;
+            case CAMERA_ORTHO_RIGHT:
+                glOrtho(-orthoSize, orthoSize, -orthoSize, orthoSize, -200.0, 200.0);
+                break;
+            case CAMERA_ORTHO_TOP:
+                glOrtho(-orthoSize, orthoSize, -orthoSize, orthoSize, -200.0, 200.0);
+                break;
+            case CAMERA_PERSPECTIVE:
+            default:
+                gluPerspective(45.0, (double)fbW / (double)fbH, 0.1, 500.0);
+                break;
+        }
 
-        /* Camera */
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        float pitchRad = glm_rad(camPitch);
-        float yawRad = glm_rad(camYaw);
-        float eyeX = sceneCX + camRadius * cosf(pitchRad) * sinf(yawRad);
-        float eyeY = sceneCY + camRadius * sinf(pitchRad);
-        float eyeZ = sceneCZ + camRadius * cosf(pitchRad) * cosf(yawRad);
-
-        gluLookAt(eyeX, eyeY, eyeZ,
-                  sceneCX, sceneCY, sceneCZ,
-                  0.0, 1.0, 0.0);
+        if (camera_view_mode == CAMERA_ORTHO_FRONT) {
+            gluLookAt(sceneCX, sceneCY, sceneCZ + camRadius,
+                      sceneCX, sceneCY, sceneCZ,
+                      0.0, 1.0, 0.0);
+        } else if (camera_view_mode == CAMERA_ORTHO_LEFT) {
+            gluLookAt(sceneCX - camRadius, sceneCY, sceneCZ,
+                      sceneCX, sceneCY, sceneCZ,
+                      0.0, 1.0, 0.0);
+        } else if (camera_view_mode == CAMERA_ORTHO_RIGHT) {
+            gluLookAt(sceneCX + camRadius, sceneCY, sceneCZ,
+                      sceneCX, sceneCY, sceneCZ,
+                      0.0, 1.0, 0.0);
+        } else if (camera_view_mode == CAMERA_ORTHO_TOP) {
+            gluLookAt(sceneCX, sceneCY + camRadius, sceneCZ,
+                      sceneCX, sceneCY, sceneCZ,
+                      0.0, 0.0, -1.0);
+        } else {
+            float pitchRad = glm_rad(camPitch);
+            float yawRad = glm_rad(camYaw);
+            float eyeX = sceneCX + camRadius * cosf(pitchRad) * sinf(yawRad);
+            float eyeY = sceneCY + camRadius * sinf(pitchRad);
+            float eyeZ = sceneCZ + camRadius * cosf(pitchRad) * cosf(yawRad);
+            gluLookAt(eyeX, eyeY, eyeZ,
+                      sceneCX, sceneCY, sceneCZ,
+                      0.0, 1.0, 0.0);
+        }
 
         /* Update lighting based on night mode */
         if (night_mode)
