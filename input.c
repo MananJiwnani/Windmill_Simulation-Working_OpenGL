@@ -73,16 +73,16 @@ void key_callback(GLFWwindow *w, int key, int scancode, int action, int mods)
         }
         if (key == GLFW_KEY_ESCAPE)
             glfwSetWindowShouldClose(w, GLFW_TRUE);
-        /* Camera view mode switching */
-        if (key == GLFW_KEY_F)
-            camera_view_mode = CAMERA_ORTHO_FRONT;
-        if (key == GLFW_KEY_L)
-            camera_view_mode = CAMERA_ORTHO_LEFT;
-        if (key == GLFW_KEY_R)
-            camera_view_mode = CAMERA_ORTHO_RIGHT;
-        if (key == GLFW_KEY_T)
-            camera_view_mode = CAMERA_ORTHO_TOP;
-        if (key == GLFW_KEY_P)
+        /* Camera view mode switching (numeric keys) */
+        if (key == GLFW_KEY_1)
             camera_view_mode = CAMERA_PERSPECTIVE;
+        if (key == GLFW_KEY_2)
+            camera_view_mode = CAMERA_ORTHO_FRONT;
+        if (key == GLFW_KEY_3)
+            camera_view_mode = CAMERA_ORTHO_LEFT;
+        if (key == GLFW_KEY_4)
+            camera_view_mode = CAMERA_ORTHO_RIGHT;
+        if (key == GLFW_KEY_5)
+            camera_view_mode = CAMERA_ORTHO_TOP;
     }
 }
